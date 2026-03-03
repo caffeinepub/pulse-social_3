@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Pulse Social: Vibrant coral-rose on clean ivory */
+    --background: 0.98 0.005 80;
+    --foreground: 0.16 0.02 250;
+    --card: 1 0 0;
+    --card-foreground: 0.16 0.02 250;
+    --popover: 1 0 0;
+    --popover-foreground: 0.16 0.02 250;
+
+    /* Primary: Vibrant rose-pink */
+    --primary: 0.58 0.22 10;
+    --primary-foreground: 1 0 0;
+
+    /* Secondary: Soft lavender */
+    --secondary: 0.94 0.02 290;
+    --secondary-foreground: 0.3 0.04 290;
+
+    /* Muted: Neutral light */
+    --muted: 0.95 0.008 80;
+    --muted-foreground: 0.52 0.015 250;
+
+    /* Accent: Electric violet */
+    --accent: 0.92 0.03 290;
+    --accent-foreground: 0.38 0.12 290;
+
+    /* Destructive: Clear red */
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 1 0 0;
+
+    --border: 0.9 0.01 250;
+    --input: 0.92 0.01 250;
+    --ring: 0.58 0.22 10;
+
+    /* Charts */
+    --chart-1: 0.58 0.22 10;
+    --chart-2: 0.55 0.2 290;
+    --chart-3: 0.62 0.18 190;
+    --chart-4: 0.65 0.16 60;
+    --chart-5: 0.6 0.14 140;
+
+    /* Sidebar */
+    --sidebar: 1 0 0;
+    --sidebar-foreground: 0.16 0.02 250;
+    --sidebar-primary: 0.58 0.22 10;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.94 0.02 290;
+    --sidebar-accent-foreground: 0.3 0.04 290;
+    --sidebar-border: 0.9 0.01 250;
+    --sidebar-ring: 0.58 0.22 10;
+
+    /* Brand extras */
+    --pulse-gradient-start: oklch(0.62 0.24 10);
+    --pulse-gradient-end: oklch(0.55 0.22 310);
+    --pulse-glow: oklch(0.58 0.22 10 / 0.2);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Figtree', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Bricolage Grotesque', 'Figtree', sans-serif;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .pulse-gradient {
+    background: linear-gradient(135deg, var(--pulse-gradient-start), var(--pulse-gradient-end));
+  }
+  .pulse-gradient-text {
+    background: linear-gradient(135deg, oklch(0.58 0.22 10), oklch(0.55 0.22 310));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+  }
+  .feed-width {
+    max-width: 680px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .glass {
+    backdrop-filter: blur(12px);
+    background: oklch(1 0 0 / 0.85);
+    border: 1px solid oklch(0.92 0.01 250 / 0.6);
+  }
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--muted-foreground) / 0.3);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--muted-foreground) / 0.5);
+}
