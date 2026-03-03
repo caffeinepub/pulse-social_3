@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { useActor } from "@/hooks/useActor";
-import { useSubscription } from "@/hooks/useSubscription";
+import { isRazorpayConfigured, useSubscription } from "@/hooks/useSubscription";
 import { Loader2, Lock, Sparkles, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { type ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
 interface SubscriptionGateProps {
   children: ReactNode;
@@ -16,21 +15,10 @@ export function SubscriptionGate({
   currentPrincipalId,
   isAdmin,
 }: SubscriptionGateProps) {
-  const { isSubscribed, subscribe } = useSubscription(isAdmin);
-  const { actor } = useActor();
-  const [isSubscribing, setIsSubscribing] = useState(false);
-  const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(
-    null,
-  );
+  const { isSubscribed, isSubscribing, subscribe } = useSubscription(isAdmin);
 
-  // Check Stripe configuration on mount when actor is available
-  useEffect(() => {
-    if (!actor) return;
-    actor
-      .isStripeConfigured()
-      .then((configured) => setStripeConfigured(configured))
-      .catch(() => setStripeConfigured(false));
-  }, [actor]);
+  // Check Razorpay configuration from localStorage
+  const razorpayConfigured = isRazorpayConfigured();
 
   // Not logged in → show page as-is (they'll see the landing CTA)
   if (!currentPrincipalId) {
@@ -44,12 +32,7 @@ export function SubscriptionGate({
 
   // Logged in but not subscribed → paywall
   const handleSubscribe = async () => {
-    setIsSubscribing(true);
-    try {
-      await subscribe();
-    } catch {
-      setIsSubscribing(false);
-    }
+    await subscribe();
   };
 
   return (
@@ -132,27 +115,18 @@ export function SubscriptionGate({
             </p>
 
             {/* CTA or not-configured message */}
-            {stripeConfigured === null ? (
-              // Still checking
-              <div
-                data-ocid="subscription.loading_state"
-                className="flex items-center justify-center gap-2 text-muted-foreground py-2"
-              >
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Checking payment options…</span>
-              </div>
-            ) : stripeConfigured === false ? (
-              // Stripe not configured
+            {!razorpayConfigured ? (
+              // Razorpay not configured
               <div
                 data-ocid="subscription.error_state"
                 className="bg-muted rounded-2xl px-5 py-4 text-sm text-muted-foreground"
               >
-                Payments are not yet configured. Please check back soon.
+                Payment not set up yet. Admin must configure Razorpay Key ID.
               </div>
             ) : (
               // Subscribe CTA
               <Button
-                data-ocid="subscription.subscribe_button"
+                data-ocid="subscription.primary_button"
                 onClick={handleSubscribe}
                 disabled={isSubscribing}
                 size="lg"
@@ -164,7 +138,7 @@ export function SubscriptionGate({
                       data-ocid="subscription.loading_state"
                       className="mr-2 h-4 w-4 animate-spin"
                     />
-                    Redirecting to checkout…
+                    Opening payment…
                   </>
                 ) : (
                   <>
@@ -177,7 +151,7 @@ export function SubscriptionGate({
 
             {/* Fine print */}
             <p className="text-xs text-muted-foreground mt-4">
-              Secured checkout via Stripe · Cancel anytime
+              Secured via Razorpay · UPI, Cards, Net Banking
             </p>
           </motion.div>
         </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useActor } from "./useActor";
+import { toast } from "sonner";
 import { useInternetIdentity } from "./useInternetIdentity";
 
 interface SubscriptionRecord {
@@ -27,10 +27,43 @@ function writeSubscription(
   localStorage.setItem(getStorageKey(principalId), JSON.stringify(record));
 }
 
+export function isRazorpayConfigured(): boolean {
+  const key = localStorage.getItem("razorpay_key_id");
+  return !!key && key.trim().length > 0;
+}
+
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Already loaded
+    if ((window as unknown as Record<string, unknown>).Razorpay) {
+      resolve();
+      return;
+    }
+    // Already a pending script tag
+    const existing = document.querySelector(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () =>
+        reject(new Error("Razorpay SDK failed to load")),
+      );
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Razorpay SDK failed to load"));
+    document.head.appendChild(script);
+  });
+}
+
 export function useSubscription(isAdmin: boolean) {
-  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   const principalId = identity?.getPrincipal().toString() ?? null;
+
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   const [paidUntil, setPaidUntil] = useState<Date | null>(() => {
     if (!principalId) return null;
@@ -56,48 +89,84 @@ export function useSubscription(isAdmin: boolean) {
   const isSubscribed: boolean =
     isAdmin || (paidUntil !== null && paidUntil > new Date());
 
+  // No-op kept for API compatibility
   const handlePaymentSuccess = useCallback(
-    async (sessionId: string): Promise<boolean> => {
-      if (!actor || !principalId) return false;
-      try {
-        const status = await actor.getStripeSessionStatus(sessionId);
-        if (status.__kind__ === "completed") {
-          const newPaidUntil = Date.now() + 7 * 24 * 60 * 60 * 1000;
-          writeSubscription(principalId, { paidUntil: newPaidUntil });
-          setPaidUntil(new Date(newPaidUntil));
-          return true;
-        }
-        return false;
-      } catch {
-        return false;
-      }
+    async (_sessionId: string): Promise<boolean> => {
+      return false;
     },
-    [actor, principalId],
+    [],
   );
 
   const subscribe = useCallback(async (): Promise<void> => {
-    if (!actor) return;
-    const successUrl = `${window.location.origin}/?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${window.location.origin}/`;
-    const items = [
-      {
-        productName: "Pulse Social Weekly",
-        currency: "inr",
-        quantity: 1n,
-        priceInCents: 9900n,
-        productDescription: "1 week access to Pulse Social",
-      },
-    ];
-    const checkoutUrl = await actor.createCheckoutSession(
-      items,
-      successUrl,
-      cancelUrl,
-    );
-    window.location.href = checkoutUrl;
-  }, [actor]);
+    const keyId = localStorage.getItem("razorpay_key_id");
+    if (!keyId || !keyId.trim()) {
+      toast.error("Payment not configured. Admin must set Razorpay Key ID.");
+      return;
+    }
+
+    setIsSubscribing(true);
+
+    try {
+      await loadRazorpayScript();
+
+      const RazorpayConstructor = (
+        window as unknown as Record<
+          string,
+          new (
+            options: unknown,
+          ) => { open: () => void }
+        >
+      ).Razorpay;
+
+      if (!RazorpayConstructor) {
+        toast.error("Failed to load payment SDK. Please try again.");
+        setIsSubscribing(false);
+        return;
+      }
+
+      const options = {
+        key: keyId.trim(),
+        amount: 9900, // paise = ₹99
+        currency: "INR",
+        name: "Pulse Social",
+        description: "Weekly Subscription – ₹99/week",
+        prefill: {
+          name: "",
+          email: "",
+          contact: "",
+        },
+        theme: {
+          color: "#000000",
+        },
+        handler: (_response: unknown) => {
+          // Payment successful — activate subscription for 7 days
+          if (principalId) {
+            const newPaidUntil = Date.now() + 7 * 24 * 60 * 60 * 1000;
+            writeSubscription(principalId, { paidUntil: newPaidUntil });
+            setPaidUntil(new Date(newPaidUntil));
+          }
+          setIsSubscribing(false);
+          toast.success("Subscription activated! Welcome to Pulse Social");
+        },
+        modal: {
+          ondismiss: () => {
+            setIsSubscribing(false);
+          },
+        },
+      };
+
+      const rzp = new RazorpayConstructor(options);
+      rzp.open();
+    } catch (err) {
+      console.error("Razorpay error:", err);
+      toast.error("Failed to open payment. Please try again.");
+      setIsSubscribing(false);
+    }
+  }, [principalId]);
 
   return {
     isSubscribed,
+    isSubscribing,
     paidUntil,
     handlePaymentSuccess,
     subscribe,
