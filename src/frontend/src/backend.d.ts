@@ -57,9 +57,11 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     getCallerUserRole(): Promise<UserRole>;
+    getDarkModePreference(): Promise<boolean | null>;
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
     isCallerAdmin(): Promise<boolean>;
     isStripeConfigured(): Promise<boolean>;
+    setDarkModePreference(isDark: boolean): Promise<void>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
 }

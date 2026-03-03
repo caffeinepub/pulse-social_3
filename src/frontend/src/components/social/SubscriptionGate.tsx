@@ -122,7 +122,7 @@ export function SubscriptionGate({
               className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-4 py-1.5 rounded-full font-semibold text-sm mb-5"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              $1 / week
+              ₹99 / week
             </motion.div>
 
             {/* Description */}
@@ -169,7 +169,7 @@ export function SubscriptionGate({
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Subscribe — $1/week
+                    Subscribe — ₹99/week
                   </>
                 )}
               </Button>

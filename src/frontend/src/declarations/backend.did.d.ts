@@ -77,9 +77,11 @@ export interface _SERVICE {
     string
   >,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getDarkModePreference' : ActorMethod<[], [] | [boolean]>,
   'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isStripeConfigured' : ActorMethod<[], boolean>,
+  'setDarkModePreference' : ActorMethod<[boolean], undefined>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
 }

@@ -2,6 +2,7 @@ import { BottomNav } from "@/components/social/BottomNav";
 import { SubscriptionGate } from "@/components/social/SubscriptionGate";
 import { TopNav } from "@/components/social/TopNav";
 import { Toaster } from "@/components/ui/sonner";
+import { useActor } from "@/hooks/useActor";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useIsAdmin } from "@/hooks/useQueries";
@@ -19,7 +20,7 @@ import {
   createRouter,
   useParams,
 } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 // Extract session_id from URL once (before any React render) and clean URL
@@ -194,8 +195,43 @@ declare module "@tanstack/react-router" {
 
 // ---- App ----
 export default function App() {
-  // Apply dark mode class on mount from stored preference
-  useDarkMode();
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+
+  // Persist dark mode to backend when user is authenticated
+  const handlePersist = useCallback(
+    (isDark: boolean) => {
+      if (actor && identity) {
+        actor.setDarkModePreference(isDark).catch(() => {
+          // silently ignore – localStorage is the source of truth locally
+        });
+      }
+    },
+    [actor, identity],
+  );
+
+  const { setDark } = useDarkMode({ onPersist: handlePersist });
+
+  // Load dark mode preference from backend once actor + identity are ready
+  const syncedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!actor || isFetching || !identity) return;
+    const principalId = identity.getPrincipal().toString();
+    // Only sync once per identity session
+    if (syncedRef.current === principalId) return;
+    syncedRef.current = principalId;
+
+    actor
+      .getDarkModePreference()
+      .then((pref) => {
+        if (pref !== null && pref !== undefined) {
+          setDark(pref);
+        }
+      })
+      .catch(() => {
+        // silently ignore – keep localStorage value
+      });
+  }, [actor, isFetching, identity, setDark]);
 
   return (
     <SocialProvider>

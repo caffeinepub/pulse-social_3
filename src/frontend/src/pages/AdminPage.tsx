@@ -12,6 +12,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -21,16 +23,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useActor } from "@/hooks/useActor";
 import { useSocial } from "@/store/socialStore";
 import { formatDistanceToNow } from "date-fns";
 import {
+  AlertCircle,
   AlertTriangle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Globe,
+  Key,
+  Loader2,
   RotateCcw,
+  Settings,
   ShieldCheck,
   ShieldOff,
   Trash2,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface AdminPageProps {
@@ -148,7 +160,7 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
       </div>
 
       <Tabs defaultValue="posts">
-        <TabsList className="w-full rounded-xl bg-muted p-1 mb-4 max-w-xs">
+        <TabsList className="w-full rounded-xl bg-muted p-1 mb-4 max-w-sm">
           <TabsTrigger
             value="posts"
             data-ocid="admin.posts_tab"
@@ -162,6 +174,13 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
             className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
           >
             Users ({allUsers.length})
+          </TabsTrigger>
+          <TabsTrigger
+            value="settings"
+            data-ocid="admin.settings_tab"
+            className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+          >
+            Settings
           </TabsTrigger>
         </TabsList>
 
@@ -446,7 +465,214 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
             </div>
           </div>
         </TabsContent>
+
+        {/* Settings Tab */}
+        <StripeSettingsTab />
       </Tabs>
     </main>
+  );
+}
+
+function StripeSettingsTab() {
+  const { actor, isFetching } = useActor();
+  const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
+  const [secretKey, setSecretKey] = useState("");
+  const [countries, setCountries] = useState("IN, US, GB");
+  const [showKey, setShowKey] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!actor || isFetching) return;
+    actor
+      .isStripeConfigured()
+      .then((configured) => setIsConfigured(configured))
+      .catch(() => setIsConfigured(false));
+  }, [actor, isFetching]);
+
+  const handleSave = async () => {
+    if (!actor) return;
+    if (!secretKey.trim()) {
+      toast.error("Please enter a Stripe secret key");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const allowedCountries = countries
+        .split(",")
+        .map((c) => c.trim().toUpperCase())
+        .filter(Boolean);
+      await actor.setStripeConfiguration({
+        secretKey: secretKey.trim(),
+        allowedCountries,
+      });
+      setIsConfigured(true);
+      toast.success("Stripe settings saved");
+    } catch (_err) {
+      toast.error("Failed to save Stripe settings. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <TabsContent value="settings" className="mt-0">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="max-w-xl"
+      >
+        <div className="bg-card rounded-2xl border border-border p-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center">
+                <Settings className="h-4 w-4 text-foreground" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-base">Stripe Settings</h2>
+                <p className="text-xs text-muted-foreground">
+                  Configure payment processing
+                </p>
+              </div>
+            </div>
+            {/* Status badge */}
+            {isConfigured === null ? (
+              <Badge variant="secondary" className="text-xs gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Checking…
+              </Badge>
+            ) : isConfigured ? (
+              <Badge
+                className="text-xs gap-1.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15"
+                variant="outline"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Configured
+              </Badge>
+            ) : (
+              <Badge
+                className="text-xs gap-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/15"
+                variant="outline"
+              >
+                <AlertCircle className="h-3 w-3" />
+                Not Configured
+              </Badge>
+            )}
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Secret Key Field */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="stripe-secret-key"
+              className="text-sm font-medium flex items-center gap-1.5"
+            >
+              <Key className="h-3.5 w-3.5 text-muted-foreground" />
+              Stripe Secret Key
+            </Label>
+            <div className="relative">
+              <Input
+                id="stripe-secret-key"
+                data-ocid="admin.stripe_key_input"
+                type={showKey ? "text" : "password"}
+                value={secretKey}
+                onChange={(e) => setSecretKey(e.target.value)}
+                placeholder="sk_live_... or sk_test_..."
+                className="pr-10 rounded-xl font-mono text-sm"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showKey ? "Hide secret key" : "Show secret key"}
+              >
+                {showKey ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Allowed Countries Field */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="stripe-countries"
+              className="text-sm font-medium flex items-center gap-1.5"
+            >
+              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+              Allowed Countries
+            </Label>
+            <Input
+              id="stripe-countries"
+              data-ocid="admin.stripe_countries_input"
+              type="text"
+              value={countries}
+              onChange={(e) => setCountries(e.target.value)}
+              placeholder="IN, US, GB"
+              className="rounded-xl text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Enter comma-separated ISO country codes (e.g. IN, US, GB)
+            </p>
+          </div>
+
+          {/* Save Button */}
+          <Button
+            data-ocid="admin.stripe_save_button"
+            onClick={handleSave}
+            disabled={isSaving || isFetching}
+            className="w-full rounded-xl"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Save Settings"
+            )}
+          </Button>
+        </div>
+
+        {/* Info box */}
+        <div className="mt-4 bg-muted/50 rounded-2xl border border-border p-5 space-y-3">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            How to set up Stripe
+          </h3>
+          <ul className="space-y-2 text-xs text-muted-foreground list-none">
+            <li className="flex gap-2">
+              <span className="text-foreground font-medium shrink-0">1.</span>
+              Go to{" "}
+              <a
+                href="https://stripe.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground transition-colors"
+              >
+                stripe.com
+              </a>{" "}
+              → Developers → API Keys to get your secret key.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-foreground font-medium shrink-0">2.</span>
+              Use a <code className="font-mono">sk_test_…</code> key for testing
+              and <code className="font-mono">sk_live_…</code> for production.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-foreground font-medium shrink-0">3.</span>
+              Payouts are sent to the bank account connected in your Stripe
+              dashboard under Settings → Bank accounts and scheduling.
+            </li>
+          </ul>
+        </div>
+      </motion.div>
+    </TabsContent>
   );
 }

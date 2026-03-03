@@ -180,7 +180,7 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
                         onClick={subscribe}
                       >
                         <Sparkles className="h-4 w-4 mr-2" />
-                        Subscribe — $1/week
+                        Subscribe — ₹99/week
                       </DropdownMenuItem>
                     </>
                   )}

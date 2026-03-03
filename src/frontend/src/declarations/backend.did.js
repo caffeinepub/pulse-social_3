@@ -96,9 +96,11 @@ export const idlService = IDL.Service({
       [],
     ),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getDarkModePreference' : IDL.Func([], [IDL.Opt(IDL.Bool)], ['query']),
   'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+  'setDarkModePreference' : IDL.Func([IDL.Bool], [], []),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
   'transform' : IDL.Func(
       [TransformationInput],
@@ -195,9 +197,11 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getDarkModePreference' : IDL.Func([], [IDL.Opt(IDL.Bool)], ['query']),
     'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+    'setDarkModePreference' : IDL.Func([IDL.Bool], [], []),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
     'transform' : IDL.Func(
         [TransformationInput],

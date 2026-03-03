@@ -82,9 +82,9 @@ export function useSubscription(isAdmin: boolean) {
     const items = [
       {
         productName: "Pulse Social Weekly",
-        currency: "usd",
+        currency: "inr",
         quantity: 1n,
-        priceInCents: 100n,
+        priceInCents: 9900n,
         productDescription: "1 week access to Pulse Social",
       },
     ];

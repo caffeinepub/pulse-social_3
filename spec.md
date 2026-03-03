@@ -1,42 +1,32 @@
 # Pulse Social
 
 ## Current State
-Pulse Social is a full-stack social media app with:
-- Internet Identity authentication
-- Feed, Explore, Profile, and Admin pages
-- Posts, likes, comments, follows
-- Blob-storage for image uploads
-- Authorization/role-based access control (admin role)
-- No payment or subscription system
+- Admin Panel has two tabs: Posts and Users
+- Stripe configuration (`secretKey`, `allowedCountries`) is set via `setStripeConfiguration` backend call but there is no UI to do this
+- Backend already supports `isStripeConfigured()` and `setStripeConfiguration()` endpoints
 
 ## Requested Changes (Diff)
 
 ### Add
-- Stripe weekly subscription: $1/week recurring payment
-- Backend subscription tracking: store each user's subscription status and expiry timestamp
-- Backend functions: `getSubscriptionStatus`, `recordSubscriptionSuccess`, `checkSubscriptionActive`
-- Subscription gate: logged-in users without an active subscription are shown a paywall modal/page before accessing the feed, explore, or profile features
-- Payment UI: a subscription modal/page with Stripe Checkout integration showing "$1 / week" pricing, triggered when access is blocked
-- After successful payment, subscription is marked active for 7 days
-- Admins bypass the subscription gate
+- A third "Settings" tab in the Admin Panel
+- A Stripe Settings card with:
+  - A masked input for the Stripe Secret Key (show/hide toggle)
+  - A text input for Allowed Countries (comma-separated, e.g. "IN, US")
+  - A Save button that calls `setStripeConfiguration` on the backend
+  - A status badge showing whether Stripe is currently configured or not
+  - Success/error toast feedback on save
 
 ### Modify
-- App routing/layout: wrap protected routes (Feed, Explore, Profile) with subscription check; redirect/block if subscription is not active
-- TopNav: show subscription status badge or "Subscribe" button for logged-in users without active subscription
+- `AdminPage.tsx` -- extend the Tabs component to include a third "Settings" tab
+- Tabs list width updated to accommodate three tabs
 
 ### Remove
-- Nothing removed
+- Nothing
 
 ## Implementation Plan
-1. Select Stripe component to install payment infrastructure
-2. Regenerate Motoko backend to add:
-   - `subscriptions` stable map: principal -> { paidUntil: Int }
-   - `getSubscriptionStatus()` -> returns { isActive: Bool; paidUntil: ?Int }
-   - `recordSubscriptionSuccess(durationSeconds: Nat)` -> () -- called after Stripe confirms payment (7 days = 604800 seconds)
-   - Admin check bypasses subscription gate
-3. Frontend:
-   - `useSubscription` hook: queries `getSubscriptionStatus`, re-fetches on login
-   - `SubscriptionGate` component: wraps protected content; if user logged in and no active subscription, renders `SubscriptionModal`
-   - `SubscriptionModal`: fullscreen paywall with Stripe Checkout button for $1/week plan, success handler calls `recordSubscriptionSuccess` then refetches status
-   - Wrap Feed, Explore, Profile routes in `SubscriptionGate`
-   - TopNav: show "Active" badge or "Subscribe" CTA based on subscription state
+1. Add a Settings tab trigger alongside Posts and Users in AdminPage.tsx
+2. Create the Stripe settings form inside the new TabsContent
+3. On mount, read `isStripeConfigured()` to show current status
+4. On save, call `actor.setStripeConfiguration({ secretKey, allowedCountries })` with parsed country list
+5. Show toast on success/error
+6. Add show/hide toggle for the secret key field

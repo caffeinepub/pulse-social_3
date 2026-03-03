@@ -8,7 +8,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import { type UserProfile, useSocial } from "@/store/socialStore";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -25,6 +28,7 @@ export function EditProfileModal({
   profile,
 }: EditProfileModalProps) {
   const { upsertProfile } = useSocial();
+  const { isDark, toggle } = useDarkMode();
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl);
@@ -122,6 +126,26 @@ export function EditProfileModal({
               onChange={(e) => setAvatarUrl(e.target.value)}
               placeholder="https://example.com/your-photo.jpg"
               className="rounded-xl"
+            />
+          </div>
+
+          <Separator className="my-1" />
+
+          {/* Dark mode preference */}
+          <div className="flex items-center justify-between py-1">
+            <div className="space-y-0.5">
+              <Label htmlFor="edit-darkmode" className="text-sm font-medium">
+                Dark mode
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Syncs across your devices
+              </p>
+            </div>
+            <Switch
+              id="edit-darkmode"
+              data-ocid="profile_edit.darkmode_switch"
+              checked={isDark}
+              onCheckedChange={toggle}
             />
           </div>
 
