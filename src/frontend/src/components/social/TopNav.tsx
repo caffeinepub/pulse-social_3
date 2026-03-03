@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useSocial } from "@/store/socialStore";
@@ -16,9 +17,11 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   LogIn,
   LogOut,
+  Moon,
   Search,
   ShieldCheck,
   Sparkles,
+  Sun,
   User,
   Zap,
 } from "lucide-react";
@@ -33,6 +36,7 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
   const { getProfile } = useSocial();
   const navigate = useNavigate();
   const { isSubscribed, subscribe } = useSubscription(isAdmin);
+  const { isDark, toggle } = useDarkMode();
 
   const profile = currentPrincipalId
     ? getProfile(currentPrincipalId)
@@ -43,10 +47,10 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-1.5 shrink-0">
-          <div className="h-8 w-8 rounded-xl pulse-gradient flex items-center justify-center shadow-glow">
-            <Zap className="h-4 w-4 text-white fill-white" />
+          <div className="h-8 w-8 rounded-xl silver-icon flex items-center justify-center">
+            <Zap className="h-4 w-4 text-white fill-white drop-shadow" />
           </div>
-          <span className="font-display font-bold text-lg tracking-tight pulse-gradient-text">
+          <span className="font-display font-bold text-lg tracking-tight silver-shine-text">
             Pulse
           </span>
         </Link>
@@ -66,6 +70,21 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
 
         {/* Right side */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Dark mode toggle */}
+          <button
+            type="button"
+            data-ocid="nav.dark_mode_toggle"
+            onClick={toggle}
+            className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="Toggle dark mode"
+          >
+            {isDark ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </button>
+
           {!currentPrincipalId ? (
             <Button
               data-ocid="nav.login_button"
@@ -83,9 +102,9 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
               {isSubscribed ? (
                 <Badge
                   variant="secondary"
-                  className="hidden sm:flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200 border"
+                  className="hidden sm:flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-secondary text-secondary-foreground border border-border"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
                   Active
                 </Badge>
               ) : (
@@ -118,7 +137,7 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
                       {isSubscribed && (
                         <span
                           aria-label="Active subscription"
-                          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background"
+                          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-foreground border-2 border-background"
                         />
                       )}
                     </div>

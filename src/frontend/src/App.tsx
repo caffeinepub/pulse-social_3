@@ -2,6 +2,7 @@ import { BottomNav } from "@/components/social/BottomNav";
 import { SubscriptionGate } from "@/components/social/SubscriptionGate";
 import { TopNav } from "@/components/social/TopNav";
 import { Toaster } from "@/components/ui/sonner";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useIsAdmin } from "@/hooks/useQueries";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -193,6 +194,9 @@ declare module "@tanstack/react-router" {
 
 // ---- App ----
 export default function App() {
+  // Apply dark mode class on mount from stored preference
+  useDarkMode();
+
   return (
     <SocialProvider>
       <RouterProvider router={router} />

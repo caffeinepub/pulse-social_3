@@ -80,12 +80,12 @@ export default {
         "2xl": "calc(var(--radius) + 8px)",
       },
       boxShadow: {
-        xs: "0 1px 2px 0 oklch(0.16 0.02 250 / 0.05)",
-        sm: "0 1px 3px oklch(0.16 0.02 250 / 0.08), 0 1px 2px oklch(0.16 0.02 250 / 0.04)",
-        card: "0 2px 8px oklch(0.16 0.02 250 / 0.06), 0 1px 3px oklch(0.16 0.02 250 / 0.04)",
-        "card-hover": "0 8px 24px oklch(0.16 0.02 250 / 0.1), 0 2px 6px oklch(0.16 0.02 250 / 0.06)",
-        glow: "0 0 20px oklch(0.58 0.22 10 / 0.25)",
-        "nav": "0 1px 0 oklch(0.9 0.01 250)",
+        xs: "0 1px 2px 0 oklch(0.08 0 0 / 0.06)",
+        sm: "0 1px 3px oklch(0.08 0 0 / 0.1), 0 1px 2px oklch(0.08 0 0 / 0.06)",
+        card: "0 2px 8px oklch(0.08 0 0 / 0.07), 0 1px 3px oklch(0.08 0 0 / 0.05)",
+        "card-hover": "0 8px 24px oklch(0.08 0 0 / 0.12), 0 2px 6px oklch(0.08 0 0 / 0.07)",
+        glow: "0 0 20px oklch(0.08 0 0 / 0.18)",
+        "nav": "0 1px 0 oklch(0.88 0 0)",
       },
       keyframes: {
         "accordion-down": {
@@ -109,9 +109,9 @@ export default {
           to: { opacity: "1", transform: "translateY(0)" },
         },
         "pulse-ring": {
-          "0%": { boxShadow: "0 0 0 0 oklch(0.58 0.22 10 / 0.4)" },
-          "70%": { boxShadow: "0 0 0 10px oklch(0.58 0.22 10 / 0)" },
-          "100%": { boxShadow: "0 0 0 0 oklch(0.58 0.22 10 / 0)" },
+          "0%": { boxShadow: "0 0 0 0 oklch(0.08 0 0 / 0.3)" },
+          "70%": { boxShadow: "0 0 0 10px oklch(0.08 0 0 / 0)" },
+          "100%": { boxShadow: "0 0 0 0 oklch(0.08 0 0 / 0)" },
         },
       },
       animation: {
