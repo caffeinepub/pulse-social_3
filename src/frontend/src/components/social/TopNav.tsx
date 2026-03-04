@@ -35,7 +35,8 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
   const { login, clear, isLoggingIn } = useInternetIdentity();
   const { getProfile } = useSocial();
   const navigate = useNavigate();
-  const { isSubscribed, subscribe } = useSubscription(isAdmin);
+  const { isSubscribed, isInFreeTrial, trialEndsAt, subscribe } =
+    useSubscription(isAdmin);
   const { isDark, toggle } = useDarkMode();
 
   const profile = currentPrincipalId
@@ -99,13 +100,36 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
           ) : (
             <>
               {/* Subscription status indicator */}
-              {isSubscribed ? (
+              {isAdmin || (isSubscribed && !isInFreeTrial) ? (
                 <Badge
                   variant="secondary"
                   className="hidden sm:flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-secondary text-secondary-foreground border border-border"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
                   Active
+                </Badge>
+              ) : isInFreeTrial && trialEndsAt ? (
+                <Badge
+                  data-ocid="topnav.trial_badge"
+                  className="hidden sm:flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Trial:{" "}
+                  {Math.max(
+                    1,
+                    Math.ceil(
+                      (trialEndsAt.getTime() - Date.now()) /
+                        (1000 * 60 * 60 * 24),
+                    ),
+                  )}{" "}
+                  day
+                  {Math.ceil(
+                    (trialEndsAt.getTime() - Date.now()) /
+                      (1000 * 60 * 60 * 24),
+                  ) === 1
+                    ? ""
+                    : "s"}{" "}
+                  left
                 </Badge>
               ) : (
                 <button
@@ -171,7 +195,34 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
                       Admin Panel
                     </DropdownMenuItem>
                   )}
-                  {!isSubscribed && (
+                  {isInFreeTrial && trialEndsAt ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        data-ocid="topnav.trial_status"
+                        className="rounded-lg text-amber-600 dark:text-amber-400 focus:text-amber-600 dark:focus:text-amber-400 cursor-default"
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Free trial —{" "}
+                        {Math.max(
+                          1,
+                          Math.ceil(
+                            (trialEndsAt.getTime() - Date.now()) /
+                              (1000 * 60 * 60 * 24),
+                          ),
+                        )}{" "}
+                        day
+                        {Math.ceil(
+                          (trialEndsAt.getTime() - Date.now()) /
+                            (1000 * 60 * 60 * 24),
+                        ) === 1
+                          ? ""
+                          : "s"}{" "}
+                        left
+                      </DropdownMenuItem>
+                    </>
+                  ) : !isSubscribed ? (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -183,7 +234,7 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
                         Subscribe — ₹1/week
                       </DropdownMenuItem>
                     </>
-                  )}
+                  ) : null}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     data-ocid="nav.logout_button"

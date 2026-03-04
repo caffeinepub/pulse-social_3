@@ -43,6 +43,9 @@ export interface StripeConfiguration {
     allowedCountries: Array<string>;
     secretKey: string;
 }
+export interface UserProfile {
+    name: string;
+}
 export interface http_request_result {
     status: bigint;
     body: Uint8Array;
@@ -56,12 +59,19 @@ export enum UserRole {
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDarkModePreference(): Promise<boolean | null>;
+    getFirstLoginTime(): Promise<bigint | null>;
+    getRazorpayKeyId(): Promise<string | null>;
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     isStripeConfigured(): Promise<boolean>;
+    recordFirstLogin(): Promise<void>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setDarkModePreference(isDark: boolean): Promise<void>;
+    setRazorpayKeyId(keyId: string): Promise<void>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
 }

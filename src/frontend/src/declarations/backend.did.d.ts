@@ -34,6 +34,7 @@ export interface TransformationOutput {
   'body' : Uint8Array,
   'headers' : Array<http_header>,
 }
+export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -76,12 +77,19 @@ export interface _SERVICE {
     [Array<ShoppingItem>, string, string],
     string
   >,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDarkModePreference' : ActorMethod<[], [] | [boolean]>,
+  'getFirstLoginTime' : ActorMethod<[], [] | [bigint]>,
+  'getRazorpayKeyId' : ActorMethod<[], [] | [string]>,
   'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isStripeConfigured' : ActorMethod<[], boolean>,
+  'recordFirstLogin' : ActorMethod<[], undefined>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setDarkModePreference' : ActorMethod<[boolean], undefined>,
+  'setRazorpayKeyId' : ActorMethod<[string], undefined>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
 }

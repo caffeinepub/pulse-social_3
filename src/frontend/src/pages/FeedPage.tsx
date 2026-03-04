@@ -73,9 +73,12 @@ export function FeedPage({ currentPrincipalId, isAdmin }: FeedPageProps) {
           <h1 className="font-display text-4xl font-bold mb-3 leading-tight">
             Share your <span className="pulse-gradient-text">world</span>
           </h1>
-          <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
+          <p className="text-muted-foreground text-lg mb-2 leading-relaxed">
             Connect with friends, share moments, and discover amazing content
             from people you care about.
+          </p>
+          <p className="text-sm font-semibold pulse-gradient-text mb-8">
+            Sign up with email or mobile — first week free for new users!
           </p>
           <Button
             onClick={login}
@@ -83,10 +86,10 @@ export function FeedPage({ currentPrincipalId, isAdmin }: FeedPageProps) {
             size="lg"
             className="rounded-2xl pulse-gradient text-white border-0 shadow-glow text-base px-8 h-12 font-semibold"
           >
-            {isLoggingIn ? "Signing in..." : "Get Started"}
+            {isLoggingIn ? "Signing in..." : "Sign Up Free"}
           </Button>
           <p className="text-xs text-muted-foreground mt-4">
-            Secured by Internet Identity — no passwords needed
+            No credit card required · Cancel anytime
           </p>
         </motion.div>
       </main>

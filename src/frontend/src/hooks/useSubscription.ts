@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useActor } from "./useActor";
 import { useInternetIdentity } from "./useInternetIdentity";
 
 interface SubscriptionRecord {
@@ -66,6 +67,7 @@ function loadRazorpayScript(): Promise<void> {
 
 export function useSubscription(isAdmin: boolean) {
   const { identity } = useInternetIdentity();
+  const { actor, isFetching } = useActor();
   const principalId = identity?.getPrincipal().toString() ?? null;
 
   const [isSubscribing, setIsSubscribing] = useState(false);
@@ -76,6 +78,10 @@ export function useSubscription(isAdmin: boolean) {
     if (!record || record.paidUntil <= Date.now()) return null;
     return new Date(record.paidUntil);
   });
+
+  // Free trial state derived from backend first-login time
+  const [trialStartMs, setTrialStartMs] = useState<number | null>(null);
+  const [trialLoaded, setTrialLoaded] = useState(false);
 
   // Re-read subscription when principal changes
   useEffect(() => {
@@ -108,8 +114,45 @@ export function useSubscription(isAdmin: boolean) {
     return () => window.removeEventListener("storage", onStorage);
   }, [principalId]);
 
-  const isSubscribed: boolean =
-    isAdmin || (paidUntil !== null && paidUntil > new Date());
+  // Load free trial start time from backend
+  useEffect(() => {
+    if (!actor || isFetching || !principalId) {
+      if (!principalId) {
+        setTrialStartMs(null);
+        setTrialLoaded(false);
+      }
+      return;
+    }
+
+    actor
+      .getFirstLoginTime()
+      .then((result) => {
+        if (result !== null && result !== undefined) {
+          // Convert bigint nanoseconds to milliseconds
+          setTrialStartMs(Number(result) / 1_000_000);
+        } else {
+          setTrialStartMs(null);
+        }
+        setTrialLoaded(true);
+      })
+      .catch(() => {
+        setTrialStartMs(null);
+        setTrialLoaded(true);
+      });
+  }, [actor, isFetching, principalId]);
+
+  // Derive free trial status
+  const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+  const trialEndsAt: Date | null =
+    trialStartMs !== null ? new Date(trialStartMs + TRIAL_DURATION_MS) : null;
+
+  const isInFreeTrial: boolean =
+    !isAdmin && trialEndsAt !== null && trialEndsAt.getTime() > Date.now();
+
+  const isPaidSubscribed: boolean =
+    paidUntil !== null && paidUntil > new Date();
+
+  const isSubscribed: boolean = isAdmin || isPaidSubscribed || isInFreeTrial;
 
   // No-op kept for API compatibility
   const handlePaymentSuccess = useCallback(
@@ -192,6 +235,9 @@ export function useSubscription(isAdmin: boolean) {
     isSubscribed,
     isSubscribing,
     paidUntil,
+    isInFreeTrial,
+    trialEndsAt,
+    trialLoaded,
     handlePaymentSuccess,
     subscribe,
   };

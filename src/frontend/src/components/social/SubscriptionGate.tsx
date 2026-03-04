@@ -4,7 +4,7 @@ import {
   isRazorpayConfiguredLocally,
   useSubscription,
 } from "@/hooks/useSubscription";
-import { Loader2, Lock, Sparkles, Zap } from "lucide-react";
+import { Loader2, Lock, Sparkles, X, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -14,12 +14,80 @@ interface SubscriptionGateProps {
   isAdmin: boolean;
 }
 
+function TrialBanner({
+  trialEndsAt,
+  onSubscribe,
+  isSubscribing,
+}: {
+  trialEndsAt: Date;
+  onSubscribe: () => void;
+  isSubscribing: boolean;
+}) {
+  const [dismissed, setDismissed] = useState(false);
+
+  const daysLeft = Math.max(
+    1,
+    Math.ceil((trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+  );
+
+  if (dismissed) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        data-ocid="subscription.trial_banner"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="w-full bg-amber-500/10 border-b border-amber-500/20 px-4 py-2.5"
+      >
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 min-w-0">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              <span className="font-semibold">Free trial</span> — {daysLeft} day
+              {daysLeft === 1 ? "" : "s"} left. Subscribe to keep access after
+              your trial ends.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              data-ocid="subscription.trial_subscribe_button"
+              size="sm"
+              onClick={onSubscribe}
+              disabled={isSubscribing}
+              className="h-7 px-3 text-xs rounded-lg bg-amber-500 hover:bg-amber-600 text-white border-0 font-semibold"
+            >
+              {isSubscribing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                "Subscribe — ₹1/week"
+              )}
+            </Button>
+            <button
+              type="button"
+              data-ocid="subscription.trial_banner_close"
+              onClick={() => setDismissed(true)}
+              aria-label="Dismiss trial banner"
+              className="p-1 rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export function SubscriptionGate({
   children,
   currentPrincipalId,
   isAdmin,
 }: SubscriptionGateProps) {
-  const { isSubscribed, isSubscribing, subscribe } = useSubscription(isAdmin);
+  const { isSubscribed, isInFreeTrial, trialEndsAt, isSubscribing, subscribe } =
+    useSubscription(isAdmin);
   const { actor, isFetching } = useActor();
 
   // Check localStorage for the key (immediate, synchronous)
@@ -60,6 +128,20 @@ export function SubscriptionGate({
   // Not logged in → show page as-is (they'll see the landing CTA)
   if (!currentPrincipalId) {
     return <>{children}</>;
+  }
+
+  // In free trial → show content with a soft dismissible banner
+  if (isInFreeTrial && trialEndsAt && !isAdmin) {
+    return (
+      <>
+        <TrialBanner
+          trialEndsAt={trialEndsAt}
+          onSubscribe={subscribe}
+          isSubscribing={isSubscribing}
+        />
+        {children}
+      </>
+    );
   }
 
   // Logged in and subscribed (or admin) → show page
@@ -131,24 +213,34 @@ export function SubscriptionGate({
 
             {/* Heading */}
             <h1 className="font-display text-3xl font-bold mb-2 leading-tight">
-              Subscribe to continue
+              Start your free week
             </h1>
+
+            {/* Free trial badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.25, duration: 0.4 }}
+              className="inline-flex items-center gap-1.5 bg-green-500/15 text-green-600 dark:text-green-400 px-4 py-1.5 rounded-full font-semibold text-sm mb-3"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              1st week free for new users
+            </motion.div>
 
             {/* Price pill */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3, duration: 0.4 }}
-              className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-4 py-1.5 rounded-full font-semibold text-sm mb-5"
+              className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-4 py-1.5 rounded-full font-semibold text-sm mb-5 ml-2"
             >
-              <Sparkles className="h-3.5 w-3.5" />
-              ₹1 / week
+              then ₹1 / week
             </motion.div>
 
             {/* Description */}
             <p className="text-muted-foreground leading-relaxed mb-8">
-              Get full access to your feed, explore new people, and share your
-              moments.
+              Sign up with your email or mobile and get full access to your
+              feed, explore new people, and share your moments.
             </p>
 
             {/* CTA or status messages */}
@@ -198,7 +290,7 @@ export function SubscriptionGate({
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Subscribe — ₹1/week
+                      Start Free Week
                     </>
                   )}
                 </Button>
@@ -223,7 +315,7 @@ export function SubscriptionGate({
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Subscribe — ₹1/week
+                    Start Free Week
                   </>
                 )}
               </Button>
@@ -231,7 +323,8 @@ export function SubscriptionGate({
 
             {/* Fine print */}
             <p className="text-xs text-muted-foreground mt-4">
-              Secured via Razorpay · UPI, Cards, Net Banking
+              Free for 7 days · then ₹1/week · Cancel anytime · Secured via
+              Razorpay
             </p>
           </motion.div>
         </div>

@@ -233,6 +233,19 @@ export default function App() {
       });
   }, [actor, isFetching, identity, setDark]);
 
+  // Record first login once per session (idempotent on backend)
+  const firstLoginRecordedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!actor || isFetching || !identity) return;
+    const principalId = identity.getPrincipal().toString();
+    if (firstLoginRecordedRef.current === principalId) return;
+    firstLoginRecordedRef.current = principalId;
+
+    actor.recordFirstLogin().catch(() => {
+      // fire-and-forget — silently ignore errors
+    });
+  }, [actor, isFetching, identity]);
+
   return (
     <SocialProvider>
       <RouterProvider router={router} />

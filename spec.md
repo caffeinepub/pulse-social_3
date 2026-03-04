@@ -1,25 +1,24 @@
 # Pulse Social
 
 ## Current State
-Full social media app with feed, explore, profiles, posting, likes, comments, admin panel, and a ₹1/week subscription gate powered by Razorpay. The Razorpay Key ID is currently stored in browser localStorage, meaning it only persists on the device where it was entered and is lost if the browser data is cleared.
+- Subscription is tracked in browser localStorage with a `paidUntil` timestamp per principal
+- New users see a paywall immediately on login with "1st week free for new users" messaging but the free trial is not actually enforced/tracked
+- The SubscriptionGate blocks all logged-in users without an active subscription record
+- Backend has no awareness of user sign-up timestamps or trial periods
 
 ## Requested Changes (Diff)
 
 ### Add
-- `setRazorpayKeyId(keyId: Text)` backend method — admin-only, stores the Razorpay Key ID in stable backend state
-- `getRazorpayKeyId()` backend query — returns `?Text`, callable by any authenticated user (needed to load the key for payment)
+- Backend: `recordFirstLogin(principal)` — stores the timestamp of a user's first ever login, only writes once per principal
+- Backend: `getFirstLoginTime()` — returns the first login timestamp for the caller, or null if never recorded
+- Frontend: On every login, call `recordFirstLogin` so the timestamp is persisted
+- Frontend: In `useSubscription`, fetch `getFirstLoginTime()` and treat users within 7 days of first login as "subscribed" (free trial)
+- Frontend: Show a "Free trial active — X days remaining" indicator to trial users in TopNav or SubscriptionGate
 
 ### Modify
-- Admin Panel → Settings tab: save/load the Razorpay Key ID via backend calls instead of localStorage
-- `useSubscription` hook: fetch the Razorpay key from the backend instead of localStorage when initiating payment
-- `isRazorpayConfigured` helper: check backend for key presence rather than localStorage
+- `useSubscription.ts` — add `isInFreeTrial` and `trialEndsAt` derived state; include trial users in `isSubscribed`
+- `SubscriptionGate.tsx` — show trial users the app (no paywall), display a soft banner about trial ending
+- `TopNav.tsx` — show "Trial: X days left" badge instead of "Subscribe" for trial users
 
 ### Remove
-- All localStorage reads/writes for `razorpay_key_id`
-
-## Implementation Plan
-1. Add `razorpayKeyId : ?Text` stable variable to backend
-2. Add `setRazorpayKeyId` (admin-only) and `getRazorpayKeyId` (query) methods to backend
-3. Update `AdminPage.tsx` RazorpaySettingsTab to call `actor.setRazorpayKeyId` on save and `actor.getRazorpayKeyId` on load
-4. Update `useSubscription.ts` to call `actor.getRazorpayKeyId()` before opening Razorpay checkout
-5. Remove all `localStorage.getItem/setItem("razorpay_key_id")` references
+- Nothing removed
