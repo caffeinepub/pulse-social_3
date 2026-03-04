@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { isRazorpayConfigured, useSubscription } from "@/hooks/useSubscription";
+import { useActor } from "@/hooks/useActor";
+import {
+  isRazorpayConfiguredLocally,
+  useSubscription,
+} from "@/hooks/useSubscription";
 import { Loader2, Lock, Sparkles, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 interface SubscriptionGateProps {
   children: ReactNode;
@@ -16,9 +20,42 @@ export function SubscriptionGate({
   isAdmin,
 }: SubscriptionGateProps) {
   const { isSubscribed, isSubscribing, subscribe } = useSubscription(isAdmin);
+  const { actor, isFetching } = useActor();
 
-  // Check Razorpay configuration from localStorage
-  const razorpayConfigured = isRazorpayConfigured();
+  // Check localStorage for the key (immediate, synchronous)
+  const locallyConfigured = isRazorpayConfiguredLocally();
+
+  // Check backend for "is configured" state (async, persists across devices)
+  const [backendConfigured, setBackendConfigured] = useState<boolean | null>(
+    null,
+  );
+  const [checkingBackend, setCheckingBackend] = useState(false);
+
+  useEffect(() => {
+    if (!actor || isFetching) return;
+    setCheckingBackend(true);
+    actor
+      .isStripeConfigured()
+      .then((result) => {
+        setBackendConfigured(result);
+      })
+      .catch(() => {
+        setBackendConfigured(false);
+      })
+      .finally(() => {
+        setCheckingBackend(false);
+      });
+  }, [actor, isFetching]);
+
+  // Payment is considered configured if either localStorage or backend says so
+  const razorpayConfigured = locallyConfigured || backendConfigured === true;
+
+  // Still waiting for backend check and no local key — show a neutral loading
+  const isCheckingConfig = !locallyConfigured && checkingBackend;
+
+  // Key is on backend (another device) but not locally — payment will fail without re-entry
+  const needsLocalKey =
+    !locallyConfigured && backendConfigured === true && !isSubscribing;
 
   // Not logged in → show page as-is (they'll see the landing CTA)
   if (!currentPrincipalId) {
@@ -105,7 +142,7 @@ export function SubscriptionGate({
               className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-4 py-1.5 rounded-full font-semibold text-sm mb-5"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              ₹99 / week
+              ₹1 / week
             </motion.div>
 
             {/* Description */}
@@ -114,17 +151,60 @@ export function SubscriptionGate({
               moments.
             </p>
 
-            {/* CTA or not-configured message */}
-            {!razorpayConfigured ? (
-              // Razorpay not configured
+            {/* CTA or status messages */}
+            {isCheckingConfig ? (
+              <div
+                data-ocid="subscription.loading_state"
+                className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+              >
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Checking payment configuration…
+              </div>
+            ) : !razorpayConfigured ? (
+              // Neither localStorage nor backend has a key
               <div
                 data-ocid="subscription.error_state"
                 className="bg-muted rounded-2xl px-5 py-4 text-sm text-muted-foreground"
               >
                 Payment not set up yet. Admin must configure Razorpay Key ID.
               </div>
+            ) : needsLocalKey ? (
+              // Key is on backend but not this device's localStorage — show info + still allow subscribe attempt (will show error toast)
+              <div className="space-y-4">
+                <div
+                  data-ocid="subscription.error_state"
+                  className="bg-amber-500/10 border border-amber-500/20 rounded-2xl px-5 py-4 text-sm text-amber-600 dark:text-amber-400 text-left"
+                >
+                  <p className="font-semibold mb-1">New device detected</p>
+                  <p className="text-xs leading-relaxed">
+                    The Razorpay Key ID is configured on another device. Ask
+                    your admin to re-enter it in{" "}
+                    <strong>Admin Panel → Settings</strong> on this device to
+                    enable payments here.
+                  </p>
+                </div>
+                <Button
+                  data-ocid="subscription.primary_button"
+                  onClick={handleSubscribe}
+                  disabled={isSubscribing}
+                  size="lg"
+                  className="w-full rounded-2xl pulse-gradient text-white border-0 shadow-glow text-base h-12 font-semibold"
+                >
+                  {isSubscribing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Opening payment…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Subscribe — ₹1/week
+                    </>
+                  )}
+                </Button>
+              </div>
             ) : (
-              // Subscribe CTA
+              // Subscribe CTA (key is in localStorage, ready to go)
               <Button
                 data-ocid="subscription.primary_button"
                 onClick={handleSubscribe}
@@ -143,7 +223,7 @@ export function SubscriptionGate({
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Subscribe — ₹99/week
+                    Subscribe — ₹1/week
                   </>
                 )}
               </Button>

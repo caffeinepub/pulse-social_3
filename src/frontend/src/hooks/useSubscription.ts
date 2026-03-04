@@ -24,10 +24,15 @@ function writeSubscription(
   principalId: string,
   record: SubscriptionRecord,
 ): void {
-  localStorage.setItem(getStorageKey(principalId), JSON.stringify(record));
+  const key = getStorageKey(principalId);
+  localStorage.setItem(key, JSON.stringify(record));
+  // Dispatch a storage event so all hook instances in the same tab refresh
+  window.dispatchEvent(
+    new StorageEvent("storage", { key, newValue: JSON.stringify(record) }),
+  );
 }
 
-export function isRazorpayConfigured(): boolean {
+export function isRazorpayConfiguredLocally(): boolean {
   const key = localStorage.getItem("razorpay_key_id");
   return !!key && key.trim().length > 0;
 }
@@ -86,6 +91,23 @@ export function useSubscription(isAdmin: boolean) {
     }
   }, [principalId]);
 
+  // Listen for storage changes (including same-tab dispatches after payment)
+  useEffect(() => {
+    if (!principalId) return;
+    const key = getStorageKey(principalId);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== key) return;
+      const record = readSubscription(principalId);
+      if (record && record.paidUntil > Date.now()) {
+        setPaidUntil(new Date(record.paidUntil));
+      } else {
+        setPaidUntil(null);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [principalId]);
+
   const isSubscribed: boolean =
     isAdmin || (paidUntil !== null && paidUntil > new Date());
 
@@ -100,7 +122,9 @@ export function useSubscription(isAdmin: boolean) {
   const subscribe = useCallback(async (): Promise<void> => {
     const keyId = localStorage.getItem("razorpay_key_id");
     if (!keyId || !keyId.trim()) {
-      toast.error("Payment not configured. Admin must set Razorpay Key ID.");
+      toast.error(
+        "Please re-enter your Razorpay Key ID in Admin Panel → Settings to enable payments on this device.",
+      );
       return;
     }
 
@@ -126,10 +150,10 @@ export function useSubscription(isAdmin: boolean) {
 
       const options = {
         key: keyId.trim(),
-        amount: 9900, // paise = ₹99
+        amount: 100, // paise = ₹1
         currency: "INR",
         name: "Pulse Social",
-        description: "Weekly Subscription – ₹99/week",
+        description: "Weekly Subscription – ₹1/week",
         prefill: {
           name: "",
           email: "",

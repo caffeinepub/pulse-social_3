@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useActor } from "@/hooks/useActor";
 import { useSocial } from "@/store/socialStore";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -38,7 +39,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface AdminPageProps {
@@ -470,22 +471,57 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
 }
 
 function RazorpaySettingsTab() {
-  const isConfigured = !!localStorage.getItem("razorpay_key_id");
+  const { actor, isFetching } = useActor();
+
   const [keyId, setKeyId] = useState(
     () => localStorage.getItem("razorpay_key_id") ?? "",
   );
   const [isSaving, setIsSaving] = useState(false);
-  const [configured, setConfigured] = useState(isConfigured);
+  const [backendConfigured, setBackendConfigured] = useState<boolean | null>(
+    null,
+  );
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
-  const handleSave = () => {
+  // On mount, check backend for configured status
+  useEffect(() => {
+    if (!actor || isFetching) return;
+    setIsLoadingStatus(true);
+    actor
+      .isStripeConfigured()
+      .then((result) => {
+        setBackendConfigured(result);
+      })
+      .catch(() => {
+        setBackendConfigured(false);
+      })
+      .finally(() => {
+        setIsLoadingStatus(false);
+      });
+  }, [actor, isFetching]);
+
+  // Configured if either backend or localStorage has a key
+  const configured =
+    backendConfigured === true || !!localStorage.getItem("razorpay_key_id");
+
+  const handleSave = async () => {
     if (!keyId.trim()) {
       toast.error("Please enter your Razorpay Key ID");
       return;
     }
     setIsSaving(true);
     try {
+      // Save to localStorage first (for immediate use on this device)
       localStorage.setItem("razorpay_key_id", keyId.trim());
-      setConfigured(true);
+
+      // Save to backend (for cross-device "is configured" check)
+      if (actor) {
+        await actor.setStripeConfiguration({
+          secretKey: keyId.trim(),
+          allowedCountries: ["IN"],
+        });
+        setBackendConfigured(true);
+      }
+
       toast.success("Razorpay settings saved");
     } catch (_err) {
       toast.error("Failed to save settings. Please try again.");
@@ -517,7 +553,15 @@ function RazorpaySettingsTab() {
               </div>
             </div>
             {/* Status badge */}
-            {configured ? (
+            {isLoadingStatus ? (
+              <Badge
+                className="text-xs gap-1.5 bg-muted text-muted-foreground border-border hover:bg-muted"
+                variant="outline"
+              >
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Checking…
+              </Badge>
+            ) : configured ? (
               <Badge
                 className="text-xs gap-1.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15"
                 variant="outline"
@@ -567,7 +611,7 @@ function RazorpaySettingsTab() {
           {/* Save Button */}
           <Button
             data-ocid="admin.razorpay_save_button"
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={isSaving}
             className="w-full rounded-xl"
           >
