@@ -31,6 +31,11 @@ export const ShoppingItem = IDL.Record({
   'priceInCents' : IDL.Nat,
   'productDescription' : IDL.Text,
 });
+export const ActivityRecord = IDL.Record({
+  'visitCount' : IDL.Int,
+  'lastSeen' : IDL.Int,
+  'principalId' : IDL.Text,
+});
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const StripeSessionStatus = IDL.Variant({
   'completed' : IDL.Record({
@@ -96,6 +101,7 @@ export const idlService = IDL.Service({
       [IDL.Text],
       [],
     ),
+  'getActivityData' : IDL.Func([], [IDL.Vec(ActivityRecord)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDarkModePreference' : IDL.Func([], [IDL.Opt(IDL.Bool)], ['query']),
@@ -110,6 +116,7 @@ export const idlService = IDL.Service({
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
   'recordFirstLogin' : IDL.Func([], [], []),
+  'recordVisit' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setDarkModePreference' : IDL.Func([IDL.Bool], [], []),
   'setRazorpayKeyId' : IDL.Func([IDL.Text], [], []),
@@ -146,6 +153,11 @@ export const idlFactory = ({ IDL }) => {
     'quantity' : IDL.Nat,
     'priceInCents' : IDL.Nat,
     'productDescription' : IDL.Text,
+  });
+  const ActivityRecord = IDL.Record({
+    'visitCount' : IDL.Int,
+    'lastSeen' : IDL.Int,
+    'principalId' : IDL.Text,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const StripeSessionStatus = IDL.Variant({
@@ -209,6 +221,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Text],
         [],
       ),
+    'getActivityData' : IDL.Func([], [IDL.Vec(ActivityRecord)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDarkModePreference' : IDL.Func([], [IDL.Opt(IDL.Bool)], ['query']),
@@ -223,6 +236,7 @@ export const idlFactory = ({ IDL }) => {
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
     'recordFirstLogin' : IDL.Func([], [], []),
+    'recordVisit' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setDarkModePreference' : IDL.Func([IDL.Bool], [], []),
     'setRazorpayKeyId' : IDL.Func([IDL.Text], [], []),

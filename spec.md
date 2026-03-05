@@ -1,24 +1,29 @@
 # Pulse Social
 
 ## Current State
-- Subscription is tracked in browser localStorage with a `paidUntil` timestamp per principal
-- New users see a paywall immediately on login with "1st week free for new users" messaging but the free trial is not actually enforced/tracked
-- The SubscriptionGate blocks all logged-in users without an active subscription record
-- Backend has no awareness of user sign-up timestamps or trial periods
+The app is a full-stack social media platform with posts, follows, likes, comments, user profiles, subscriptions (Razorpay ₹1/week), dark mode synced to backend, and an Admin Panel with Posts, Users, and Settings tabs.
+
+The backend tracks `loginRecords` (first login timestamp per principal) and `userProfiles`. There is no tracking of how many times a user has visited the app or when they were last seen.
+
+The Admin Panel has no activity-monitoring tab.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `recordFirstLogin(principal)` — stores the timestamp of a user's first ever login, only writes once per principal
-- Backend: `getFirstLoginTime()` — returns the first login timestamp for the caller, or null if never recorded
-- Frontend: On every login, call `recordFirstLogin` so the timestamp is persisted
-- Frontend: In `useSubscription`, fetch `getFirstLoginTime()` and treat users within 7 days of first login as "subscribed" (free trial)
-- Frontend: Show a "Free trial active — X days remaining" indicator to trial users in TopNav or SubscriptionGate
+- Backend: `lastSeenRecords` map (Principal → Int nanoseconds) to track the most recent visit timestamp per user
+- Backend: `visitCounts` map (Principal → Int) to count total visits per user
+- Backend: `recordVisit()` — shared update method called on every app load for authenticated users; updates lastSeenRecords and increments visitCounts
+- Backend: `getActivityData()` — admin-only query that returns an array of activity records: `{ principalId: Text; lastSeen: Int; visitCount: Int }` for all users who have visited
+- Admin Panel frontend: New "Activity" tab (4th tab) showing a table with columns: User avatar+name, Last Seen (human-readable relative time), Total Visits, and a status badge (Active: visited in last 24h; Recent: last 7 days; Inactive: older)
+- Admin Panel stats row: Add "Active Today" stat card showing count of users seen in the last 24 hours
 
 ### Modify
-- `useSubscription.ts` — add `isInFreeTrial` and `trialEndsAt` derived state; include trial users in `isSubscribed`
-- `SubscriptionGate.tsx` — show trial users the app (no paywall), display a soft banner about trial ending
-- `TopNav.tsx` — show "Trial: X days left" badge instead of "Subscribe" for trial users
+- App.tsx: Call `actor.recordVisit()` on every authenticated session load (not just first login), fire-and-forget
 
 ### Remove
 - Nothing removed
+
+## Implementation Plan
+1. Backend: Add `lastSeenRecords` and `visitCounts` maps; add `recordVisit()` (updates both maps, callable by any authenticated user); add `getActivityData()` (admin only, returns array of `{ principalId; lastSeen; visitCount }`)
+2. Frontend App.tsx: Add a `useEffect` that calls `actor.recordVisit()` whenever actor+identity are ready (every session, not just first login)
+3. Frontend AdminPage.tsx: Add a 4th "Activity" tab with a table of user activity data fetched via `actor.getActivityData()`, with columns for user info (looked up from socialStore profiles), last seen (relative), visit count, and activity badge; add "Active Today" to the stats grid

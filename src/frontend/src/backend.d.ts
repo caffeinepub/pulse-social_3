@@ -27,6 +27,11 @@ export interface TransformationInput {
     context: Uint8Array;
     response: http_request_result;
 }
+export interface ActivityRecord {
+    visitCount: bigint;
+    lastSeen: bigint;
+    principalId: string;
+}
 export type StripeSessionStatus = {
     __kind__: "completed";
     completed: {
@@ -59,6 +64,7 @@ export enum UserRole {
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
+    getActivityData(): Promise<Array<ActivityRecord>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDarkModePreference(): Promise<boolean | null>;
@@ -69,6 +75,7 @@ export interface backendInterface {
     isCallerAdmin(): Promise<boolean>;
     isStripeConfigured(): Promise<boolean>;
     recordFirstLogin(): Promise<void>;
+    recordVisit(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setDarkModePreference(isDark: boolean): Promise<void>;
     setRazorpayKeyId(keyId: string): Promise<void>;

@@ -1,11 +1,13 @@
+import Map "mo:core/Map";
+import Principal "mo:core/Principal";
+import Time "mo:core/Time";
+import Int "mo:core/Int";
+import Iter "mo:core/Iter";
 import MixinStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
-import Map "mo:core/Map";
-import Principal "mo:core/Principal";
-import Time "mo:core/Time";
 import Runtime "mo:core/Runtime";
 import Migration "migration";
 
@@ -26,12 +28,23 @@ actor {
   // Free trial tracking (first login timestamp in nanoseconds)
   let loginRecords = Map.empty<Principal, Int>();
 
+  // In-memory maps for activity tracking
+  let lastSeenRecords = Map.empty<Principal, Int>();
+  let visitCounts = Map.empty<Principal, Int>();
+
   // User profiles storage
   public type UserProfile = {
     name : Text;
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
+
+  // ActivityRecord type for external visibility
+  public type ActivityRecord = {
+    principalId : Text;
+    lastSeen : Int;
+    visitCount : Int;
+  };
 
   func adminOnly(caller : Principal) {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
@@ -151,5 +164,48 @@ actor {
       Runtime.trap("Unauthorized: Only users can get login times");
     };
     loginRecords.get(caller);
+  };
+
+  // --------- Activity Tracking ------------
+
+  // Record visit timestamp and increment visit count
+  public shared ({ caller }) func recordVisit() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can record visits");
+    };
+
+    let currentTime = Time.now();
+
+    // Update last seen timestamp
+    lastSeenRecords.add(caller, currentTime);
+
+    // Increment visit count
+    let currentCount = switch (visitCounts.get(caller)) {
+      case (null) { 0 };
+      case (?count) { count };
+    };
+    visitCounts.add(caller, currentCount + 1);
+  };
+
+  // Get all activity data (admin-only)
+  public query ({ caller }) func getActivityData() : async [ActivityRecord] {
+    adminOnly(caller);
+
+    let activityIter = lastSeenRecords.entries().map(
+      func((principal, lastSeen)) {
+        let visitCount = switch (visitCounts.get(principal)) {
+          case (null) { 0 };
+          case (?count) { count };
+        };
+
+        {
+          principalId = principal.toText();
+          lastSeen;
+          visitCount;
+        };
+      }
+    );
+
+    activityIter.toArray();
   };
 };

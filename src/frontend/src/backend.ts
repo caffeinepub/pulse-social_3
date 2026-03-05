@@ -116,6 +116,11 @@ export interface TransformationInput {
     context: Uint8Array;
     response: http_request_result;
 }
+export interface ActivityRecord {
+    visitCount: bigint;
+    lastSeen: bigint;
+    principalId: string;
+}
 export type StripeSessionStatus = {
     __kind__: "completed";
     completed: {
@@ -159,6 +164,7 @@ export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
+    getActivityData(): Promise<Array<ActivityRecord>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDarkModePreference(): Promise<boolean | null>;
@@ -169,6 +175,7 @@ export interface backendInterface {
     isCallerAdmin(): Promise<boolean>;
     isStripeConfigured(): Promise<boolean>;
     recordFirstLogin(): Promise<void>;
+    recordVisit(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setDarkModePreference(isDark: boolean): Promise<void>;
     setRazorpayKeyId(keyId: string): Promise<void>;
@@ -301,6 +308,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.createCheckoutSession(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async getActivityData(): Promise<Array<ActivityRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getActivityData();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getActivityData();
             return result;
         }
     }
@@ -441,6 +462,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.recordFirstLogin();
+            return result;
+        }
+    }
+    async recordVisit(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.recordVisit();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.recordVisit();
             return result;
         }
     }

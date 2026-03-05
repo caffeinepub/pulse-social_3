@@ -246,6 +246,16 @@ export default function App() {
     });
   }, [actor, isFetching, identity]);
 
+  // Record visit on every authenticated session
+  const visitRecordedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!actor || isFetching || !identity) return;
+    const principalId = identity.getPrincipal().toString();
+    if (visitRecordedRef.current === principalId) return;
+    visitRecordedRef.current = principalId;
+    actor.recordVisit().catch(() => {}); // fire-and-forget
+  }, [actor, isFetching, identity]);
+
   return (
     <SocialProvider>
       <RouterProvider router={router} />

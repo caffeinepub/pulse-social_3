@@ -27,9 +27,11 @@ import { useActor } from "@/hooks/useActor";
 import { useSocial } from "@/store/socialStore";
 import { formatDistanceToNow } from "date-fns";
 import {
+  Activity,
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  Clock,
   Key,
   Loader2,
   RotateCcw,
@@ -41,6 +43,7 @@ import {
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import type { ActivityRecord } from "../backend";
 
 interface AdminPageProps {
   isAdmin: boolean;
@@ -57,6 +60,16 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
     unsuspendUser,
     getProfile,
   } = useSocial();
+  const { actor, isFetching } = useActor();
+  const [activityData, setActivityData] = useState<ActivityRecord[]>([]);
+
+  useEffect(() => {
+    if (!actor || isFetching || !isAdmin) return;
+    actor
+      .getActivityData()
+      .then((data) => setActivityData(data))
+      .catch(() => {});
+  }, [actor, isFetching, isAdmin]);
 
   if (!isAdmin) {
     return (
@@ -133,7 +146,7 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
       </motion.div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         {[
           { label: "Total Posts", value: allPosts.length },
           {
@@ -144,6 +157,14 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
           {
             label: "Suspended",
             value: allUsers.filter((u) => u.isSuspended).length,
+          },
+          {
+            label: "Active Today",
+            value: activityData.filter(
+              (r) =>
+                new Date(Number(r.lastSeen) / 1_000_000) >
+                new Date(Date.now() - 24 * 60 * 60 * 1000),
+            ).length,
           },
         ].map((stat) => (
           <div
@@ -178,6 +199,14 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
             className="flex-1 min-w-[80px] rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
           >
             ⚙ Settings
+          </TabsTrigger>
+          <TabsTrigger
+            value="activity"
+            data-ocid="admin.activity_tab"
+            className="flex-1 min-w-[80px] rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm flex items-center gap-1.5"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Activity
           </TabsTrigger>
         </TabsList>
 
@@ -465,8 +494,164 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
 
         {/* Settings Tab */}
         <RazorpaySettingsTab />
+
+        {/* Activity Tab */}
+        <TabsContent
+          value="activity"
+          data-ocid="admin.activity_tab_panel"
+          className="mt-0"
+        >
+          <ActivityTab />
+        </TabsContent>
       </Tabs>
     </main>
+  );
+}
+
+function ActivityTab() {
+  const { actor, isFetching } = useActor();
+  const { getProfile } = useSocial();
+  const [activityData, setActivityData] = useState<ActivityRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!actor || isFetching) return;
+    setIsLoading(true);
+    actor
+      .getActivityData()
+      .then((data) => setActivityData(data))
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [actor, isFetching]);
+
+  const truncatePrincipal = (id: string) => {
+    if (id.length <= 20) return id;
+    return `${id.slice(0, 10)}...${id.slice(-6)}`;
+  };
+
+  const getStatusBadge = (lastSeenNs: bigint) => {
+    const lastSeenMs = new Date(Number(lastSeenNs) / 1_000_000);
+    const now = Date.now();
+    const diffMs = now - lastSeenMs.getTime();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const sevenDaysMs = 7 * oneDayMs;
+
+    if (diffMs < oneDayMs) {
+      return (
+        <Badge
+          className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15"
+          variant="outline"
+        >
+          Active
+        </Badge>
+      );
+    }
+    if (diffMs < sevenDaysMs) {
+      return (
+        <Badge variant="secondary" className="text-[10px]">
+          Recent
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="text-[10px] text-muted-foreground">
+        Inactive
+      </Badge>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div
+        className="flex items-center justify-center py-16"
+        data-ocid="admin.activity.loading_state"
+      >
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (activityData.length === 0) {
+    return (
+      <div
+        data-ocid="admin.activity_empty_state"
+        className="bg-card rounded-2xl border border-border p-12 text-center"
+      >
+        <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+          <Activity className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium mb-1">No activity recorded yet</p>
+        <p className="text-xs text-muted-foreground">
+          Users will appear here after their first visit.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      <div className="overflow-x-auto">
+        <Table data-ocid="admin.activity_table">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent border-border">
+              <TableHead className="text-xs font-semibold">User</TableHead>
+              <TableHead className="text-xs font-semibold hidden sm:table-cell">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Last Seen
+                </div>
+              </TableHead>
+              <TableHead className="text-xs font-semibold">Visits</TableHead>
+              <TableHead className="text-xs font-semibold">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {activityData.map((record, idx) => {
+              const profile = getProfile(record.principalId);
+              const lastSeenDate = new Date(
+                Number(record.lastSeen) / 1_000_000,
+              );
+              return (
+                <TableRow
+                  key={record.principalId}
+                  data-ocid={`admin.activity.item.${idx + 1}`}
+                  className="border-border"
+                >
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-7 w-7 shrink-0">
+                        <AvatarImage src={profile?.avatarUrl} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                          {profile?.displayName?.slice(0, 2).toUpperCase() ??
+                            record.principalId.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs font-medium truncate max-w-[120px]">
+                        {profile?.displayName ??
+                          truncatePrincipal(record.principalId)}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3 hidden sm:table-cell">
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(lastSeenDate, { addSuffix: true })}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <span className="text-sm font-semibold tabular-nums">
+                      {Number(record.visitCount)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {getStatusBadge(record.lastSeen)}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
 

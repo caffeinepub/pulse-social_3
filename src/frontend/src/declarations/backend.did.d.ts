@@ -10,6 +10,11 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface ActivityRecord {
+  'visitCount' : bigint,
+  'lastSeen' : bigint,
+  'principalId' : string,
+}
 export interface ShoppingItem {
   'productName' : string,
   'currency' : string,
@@ -77,6 +82,7 @@ export interface _SERVICE {
     [Array<ShoppingItem>, string, string],
     string
   >,
+  'getActivityData' : ActorMethod<[], Array<ActivityRecord>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDarkModePreference' : ActorMethod<[], [] | [boolean]>,
@@ -87,6 +93,7 @@ export interface _SERVICE {
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isStripeConfigured' : ActorMethod<[], boolean>,
   'recordFirstLogin' : ActorMethod<[], undefined>,
+  'recordVisit' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setDarkModePreference' : ActorMethod<[boolean], undefined>,
   'setRazorpayKeyId' : ActorMethod<[string], undefined>,
