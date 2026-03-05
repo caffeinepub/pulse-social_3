@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Check, Copy, Share2, Twitter, Zap } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
-import { SiWhatsapp } from "react-icons/si";
+import { SiInstagram, SiWhatsapp } from "react-icons/si";
 import { toast } from "sonner";
 
 export function SharePage() {
   const appUrl = window.location.origin;
   const shareMessage = "Join me on Pulse Social!";
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   const handleCopyLink = async () => {
     try {
@@ -44,6 +46,30 @@ export function SharePage() {
       `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
       "_blank",
       "noopener,noreferrer",
+    );
+  };
+
+  const handleInstagram = async () => {
+    // Instagram doesn't support direct URL sharing via web intent.
+    // Copy the link to clipboard so users can paste it in their Instagram bio/story.
+    try {
+      await navigator.clipboard.writeText(appUrl);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = appUrl;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    toast.info(
+      "Link copied! Open Instagram and paste it in your bio or story.",
+      {
+        duration: 4000,
+      },
     );
   };
 
@@ -130,14 +156,14 @@ export function SharePage() {
           </div>
 
           {/* Social share buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <button
               type="button"
               data-ocid="share.whatsapp_button"
               onClick={handleWhatsApp}
-              className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent transition-all duration-150 text-sm font-semibold text-foreground group"
+              className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 rounded-xl border border-border bg-card hover:bg-accent transition-all duration-150 text-xs font-semibold text-foreground group"
             >
-              <SiWhatsapp className="h-4 w-4 text-[#25D366] group-hover:scale-110 transition-transform duration-150" />
+              <SiWhatsapp className="h-5 w-5 text-[#25D366] group-hover:scale-110 transition-transform duration-150" />
               WhatsApp
             </button>
 
@@ -145,11 +171,54 @@ export function SharePage() {
               type="button"
               data-ocid="share.twitter_button"
               onClick={handleTwitter}
-              className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent transition-all duration-150 text-sm font-semibold text-foreground group"
+              className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 rounded-xl border border-border bg-card hover:bg-accent transition-all duration-150 text-xs font-semibold text-foreground group"
             >
-              <Twitter className="h-4 w-4 group-hover:scale-110 transition-transform duration-150" />
+              <Twitter className="h-5 w-5 group-hover:scale-110 transition-transform duration-150" />
               Twitter / X
             </button>
+
+            <button
+              type="button"
+              data-ocid="share.instagram_button"
+              onClick={handleInstagram}
+              className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 rounded-xl border border-border bg-card hover:bg-accent transition-all duration-150 text-xs font-semibold text-foreground group"
+            >
+              <SiInstagram className="h-5 w-5 text-[#E1306C] group-hover:scale-110 transition-transform duration-150" />
+              Instagram
+            </button>
+          </div>
+
+          {/* QR Code toggle */}
+          <div className="mt-6">
+            <button
+              type="button"
+              data-ocid="share.qr_toggle"
+              onClick={() => setShowQr((v) => !v)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-accent transition-all duration-150"
+            >
+              {showQr ? "Hide QR Code" : "Show QR Code"}
+            </button>
+
+            {showQr && (
+              <div
+                data-ocid="share.qr_panel"
+                className="mt-4 flex flex-col items-center gap-3"
+              >
+                <div className="p-4 rounded-2xl bg-white shadow-sm border border-border/40">
+                  <QRCodeSVG
+                    value={appUrl}
+                    size={180}
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    level="M"
+                    includeMargin={false}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Scan with your phone camera to open Pulse Social
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
