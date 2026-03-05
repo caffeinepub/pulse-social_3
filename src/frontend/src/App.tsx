@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/social/BottomNav";
+import { InAppBrowserBanner } from "@/components/social/InAppBrowserBanner";
 import { SubscriptionGate } from "@/components/social/SubscriptionGate";
 import { TopNav } from "@/components/social/TopNav";
 import { Toaster } from "@/components/ui/sonner";
@@ -78,6 +79,7 @@ function RootLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      <InAppBrowserBanner />
       <TopNav currentPrincipalId={currentPrincipalId} isAdmin={isAdmin} />
       <Outlet />
       {currentPrincipalId && (
