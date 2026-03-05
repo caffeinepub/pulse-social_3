@@ -1,29 +1,29 @@
 # Pulse Social
 
 ## Current State
-The app is a full-stack social media platform with posts, follows, likes, comments, user profiles, subscriptions (Razorpay ₹1/week), dark mode synced to backend, and an Admin Panel with Posts, Users, and Settings tabs.
 
-The backend tracks `loginRecords` (first login timestamp per principal) and `userProfiles`. There is no tracking of how many times a user has visited the app or when they were last seen.
+The app tracks activity only for **authenticated users** (those who have logged in via Internet Identity). The `recordVisit` function requires a valid user principal. Anonymous visitors who open the app link but have not signed up are completely invisible to the admin.
 
-The Admin Panel has no activity-monitoring tab.
+The Admin Panel has four tabs: Posts, Users, Settings (Razorpay), and Activity (shows per-user last seen + visit count for registered users only).
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `lastSeenRecords` map (Principal → Int nanoseconds) to track the most recent visit timestamp per user
-- Backend: `visitCounts` map (Principal → Int) to count total visits per user
-- Backend: `recordVisit()` — shared update method called on every app load for authenticated users; updates lastSeenRecords and increments visitCounts
-- Backend: `getActivityData()` — admin-only query that returns an array of activity records: `{ principalId: Text; lastSeen: Int; visitCount: Int }` for all users who have visited
-- Admin Panel frontend: New "Activity" tab (4th tab) showing a table with columns: User avatar+name, Last Seen (human-readable relative time), Total Visits, and a status badge (Active: visited in last 24h; Recent: last 7 days; Inactive: older)
-- Admin Panel stats row: Add "Active Today" stat card showing count of users seen in the last 24 hours
+- **Anonymous visitor counter** -- backend stores a global counter of total app opens and a daily breakdown, callable without authentication.
+- **`recordAnonymousVisit` backend function** -- increments total page views and records the timestamp bucketed by day (UTC). Public, no auth required.
+- **`getVisitorStats` backend query** -- admin-only; returns total visits, unique session count (estimated via session tokens stored client-side), and a daily visit breakdown for the last 30 days.
+- **Visitor Stats section in Admin Panel Activity tab** -- new stat cards above the existing user activity table: "Total Page Views", "Today's Views", "This Week's Views", and a simple daily bar chart for the last 7 days.
+- Frontend calls `recordAnonymousVisit` on every page load (before and after login), replacing the current `recordVisit` which is authenticated-only.
 
 ### Modify
-- App.tsx: Call `actor.recordVisit()` on every authenticated session load (not just first login), fire-and-forget
+- **Stats row in Admin Panel** -- add a "Total Views" stat card alongside existing cards.
+- **Activity tab** -- add a Visitor Stats section at the top with breakdown cards and a 7-day trend.
 
 ### Remove
-- Nothing removed
+- Nothing removed.
 
 ## Implementation Plan
-1. Backend: Add `lastSeenRecords` and `visitCounts` maps; add `recordVisit()` (updates both maps, callable by any authenticated user); add `getActivityData()` (admin only, returns array of `{ principalId; lastSeen; visitCount }`)
-2. Frontend App.tsx: Add a `useEffect` that calls `actor.recordVisit()` whenever actor+identity are ready (every session, not just first login)
-3. Frontend AdminPage.tsx: Add a 4th "Activity" tab with a table of user activity data fetched via `actor.getActivityData()`, with columns for user info (looked up from socialStore profiles), last seen (relative), visit count, and activity badge; add "Active Today" to the stats grid
+
+1. **Backend (`main.mo`)**: Add `totalPageViews : Nat` counter and `dailyViews : Map<Text, Nat>` (key = "YYYY-MM-DD" from nanosecond timestamp). Add public `recordAnonymousVisit()` that increments both. Add admin-only `getVisitorStats()` returning `{ totalViews: Nat; todayViews: Nat; weekViews: Nat; dailyBreakdown: [(Text, Nat)] }`.
+2. **Frontend `App.tsx`**: Call `recordAnonymousVisit()` on every mount (unauthenticated and authenticated), replacing the existing authenticated `recordVisit` for the anonymous counting use-case. Keep `recordVisit` for per-user activity tracking.
+3. **Frontend `AdminPage.tsx`**: In the Activity tab, fetch visitor stats and render: three stat cards (Total Views, Today, This Week) and a 7-day bar chart using inline SVG or a simple bar layout with Tailwind. Also add "Total Views" card to the top stats row.

@@ -7,6 +7,7 @@ import { useDarkMode } from "@/hooks/useDarkMode";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useIsAdmin } from "@/hooks/useQueries";
 import { useSubscription } from "@/hooks/useSubscription";
+import { recordPageView } from "@/hooks/useVisitorTracking";
 import { AdminPage } from "@/pages/AdminPage";
 import { ExplorePage } from "@/pages/ExplorePage";
 import { FeedPage } from "@/pages/FeedPage";
@@ -197,6 +198,11 @@ declare module "@tanstack/react-router" {
 export default function App() {
   const { actor, isFetching } = useActor();
   const { identity } = useInternetIdentity();
+
+  // Track every page load (anonymous + authenticated)
+  useEffect(() => {
+    recordPageView();
+  }, []);
 
   // Persist dark mode to backend when user is authenticated
   const handlePersist = useCallback(

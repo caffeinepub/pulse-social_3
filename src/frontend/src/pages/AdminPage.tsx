@@ -24,14 +24,17 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActor } from "@/hooks/useActor";
+import { getVisitorStats } from "@/hooks/useVisitorTracking";
 import { useSocial } from "@/store/socialStore";
 import { formatDistanceToNow } from "date-fns";
 import {
   Activity,
   AlertCircle,
   AlertTriangle,
+  BarChart2,
   CheckCircle2,
   Clock,
+  Eye,
   Key,
   Loader2,
   RotateCcw,
@@ -41,7 +44,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { ActivityRecord } from "../backend";
 
@@ -146,7 +149,7 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
       </motion.div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-6">
         {[
           { label: "Total Posts", value: allPosts.length },
           {
@@ -165,6 +168,10 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
                 new Date(Number(r.lastSeen) / 1_000_000) >
                 new Date(Date.now() - 24 * 60 * 60 * 1000),
             ).length,
+          },
+          {
+            label: "Total Views",
+            value: getVisitorStats().totalViews,
           },
         ].map((stat) => (
           <div
@@ -499,12 +506,117 @@ export function AdminPage({ isAdmin, currentPrincipalId }: AdminPageProps) {
         <TabsContent
           value="activity"
           data-ocid="admin.activity_tab_panel"
-          className="mt-0"
+          className="mt-0 space-y-6"
         >
+          <VisitorsSection />
           <ActivityTab />
         </TabsContent>
       </Tabs>
     </main>
+  );
+}
+
+function VisitorsSection() {
+  const stats = useMemo(() => getVisitorStats(), []);
+
+  const today = (() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  })();
+
+  // Last 7 days keys + labels
+  const last7Days = useMemo((): Array<{
+    key: string;
+    label: string;
+    count: number;
+  }> => {
+    const days: Array<{ key: string; label: string; count: number }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("en-US", { weekday: "short" });
+      const count = stats.dailyViews[key] ?? 0;
+      days.push({ key, label, count });
+    }
+    return days;
+  }, [stats]);
+
+  const todayViews = stats.dailyViews[today] ?? 0;
+  const weekViews = last7Days.reduce((sum, d) => sum + d.count, 0);
+  const maxCount = Math.max(...last7Days.map((d) => d.count), 1);
+
+  return (
+    <div className="space-y-4">
+      {/* Visitor stat cards */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Total Page Views", value: stats.totalViews, icon: Eye },
+          { label: "Today's Views", value: todayViews, icon: BarChart2 },
+          { label: "This Week's Views", value: weekViews, icon: Activity },
+        ].map(({ label, value, icon: Icon }) => (
+          <div
+            key={label}
+            className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-2"
+          >
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">{label}</p>
+            </div>
+            <p className="font-display text-3xl font-bold tabular-nums">
+              {value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* 7-day bar chart */}
+      <div className="bg-card rounded-2xl border border-border p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <BarChart2 className="h-4 w-4 text-muted-foreground" />
+            Daily Views — Last 7 Days
+          </h3>
+          <span className="text-xs text-muted-foreground">
+            Views are tracked per browser — refresh to update.
+          </span>
+        </div>
+        <div className="flex items-end gap-2 h-32">
+          {last7Days.map(({ key, label, count }) => {
+            const heightPct = Math.round((count / maxCount) * 100);
+            const isToday = key === today;
+            return (
+              <div
+                key={key}
+                className="flex flex-col items-center gap-1 flex-1 h-full"
+              >
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  {count > 0 ? count : ""}
+                </span>
+                <div className="flex-1 w-full flex items-end">
+                  <div
+                    className={`w-full rounded-t-md transition-all duration-500 ${
+                      isToday ? "bg-foreground" : "bg-muted-foreground/30"
+                    }`}
+                    style={{
+                      height: `${Math.max(heightPct, count > 0 ? 4 : 0)}%`,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`text-[10px] font-medium ${isToday ? "text-foreground" : "text-muted-foreground"}`}
+                >
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
