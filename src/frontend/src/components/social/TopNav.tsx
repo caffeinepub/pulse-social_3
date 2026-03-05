@@ -19,6 +19,7 @@ import {
   LogOut,
   Moon,
   Search,
+  Share2,
   ShieldCheck,
   Sparkles,
   Sun,
@@ -235,6 +236,15 @@ export function TopNav({ currentPrincipalId, isAdmin }: TopNavProps) {
                       </DropdownMenuItem>
                     </>
                   ) : null}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    data-ocid="nav.share_link"
+                    className="cursor-pointer rounded-lg"
+                    onClick={() => navigate({ to: "/share" })}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share App
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     data-ocid="nav.logout_button"

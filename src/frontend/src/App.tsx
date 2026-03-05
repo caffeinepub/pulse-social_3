@@ -13,6 +13,7 @@ import { AdminPage } from "@/pages/AdminPage";
 import { ExplorePage } from "@/pages/ExplorePage";
 import { FeedPage } from "@/pages/FeedPage";
 import { ProfilePage } from "@/pages/ProfilePage";
+import { SharePage } from "@/pages/SharePage";
 import { SocialProvider } from "@/store/socialStore";
 import {
   Outlet,
@@ -181,11 +182,18 @@ const adminRoute = createRoute({
   component: AdminRoute,
 });
 
+const shareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/share",
+  component: SharePage,
+});
+
 const routeTree = rootRoute.addChildren([
   feedRoute,
   exploreRoute,
   profileRoute,
   adminRoute,
+  shareRoute,
 ]);
 
 const router = createRouter({ routeTree });

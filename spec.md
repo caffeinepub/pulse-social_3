@@ -1,31 +1,25 @@
 # Pulse Social
 
 ## Current State
-Full-stack social media app on ICP with:
-- Internet Identity authentication
-- User profiles with avatar, bio, follower/following stats, dark mode preference
-- Feed (posts from followed users), Explore (all posts + people to follow), post interactions (like, comment, image upload)
-- Admin Panel with tabs: Posts, Users, Activity (user activity tracking + anonymous visitor counter with 7-day bar chart), Settings (Razorpay Key ID stored in backend)
-- Subscription paywall: 7-day free trial for new users, then ₹1/week via Razorpay checkout
-- Black and white theme with dark mode toggle (moon/sun icon in nav)
-- Animated silver shimmer on Pulse logo
-- Nav shows trial countdown badge or Active/Subscribe status
-- Dismissible trial expiry banner
-- Visitor tracking (page views, daily breakdown)
-- "Open in browser" notice when in-app browser (webview) is detected
+The app has a full social media platform with feed, explore, profiles, admin panel, and subscription system. There is no dedicated sharing page or shareable link card with the app logo.
 
 ## Requested Changes (Diff)
 
 ### Add
-- "Open in browser" detection and notice for users opening the app inside in-app browsers (Threads, Instagram, WhatsApp, etc.) -- show a prominent banner/modal telling them to open in Chrome/Safari/Firefox to log in
+- A `/share` route that renders a standalone sharing page
+- The sharing page displays the Pulse Social logo (silver shine icon + wordmark), a short tagline, the app URL as a copyable link, and a "Copy Link" button with success feedback
+- A "Share App" button in the TopNav dropdown menu (visible to all logged-in users) that navigates to `/share`
+- The share page also includes social share shortcuts (WhatsApp, Twitter/X, copy) with the app URL
 
 ### Modify
-- Full rebuild from scratch preserving all existing features
+- TopNav dropdown: add a "Share App" menu item above the Sign out button
+- Router: add the `/share` route
 
 ### Remove
 - Nothing
 
 ## Implementation Plan
-1. Select components: authorization, blob-storage, stripe (replaced by Razorpay frontend-only), user-approval not needed
-2. Generate Motoko backend with all social features + subscription + activity tracking + Razorpay key storage
-3. Build frontend with all features including in-app browser detection notice
+1. Create `src/frontend/src/pages/SharePage.tsx` — standalone page with logo, tagline, app URL display, copy-to-clipboard button, and social share buttons (WhatsApp, Twitter/X)
+2. Add `/share` route to the router in `App.tsx`
+3. Add "Share App" dropdown item to `TopNav.tsx` dropdown menu
+4. The share page should work for both logged-in and logged-out users (no subscription gate needed)
