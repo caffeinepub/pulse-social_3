@@ -1,8 +1,8 @@
 import Map "mo:core/Map";
 import Principal "mo:core/Principal";
+import Iter "mo:core/Iter";
 import Time "mo:core/Time";
 import Int "mo:core/Int";
-import Iter "mo:core/Iter";
 import MixinStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
@@ -10,72 +10,35 @@ import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
 import Runtime "mo:core/Runtime";
 
-
-
 actor {
   include MixinStorage();
+
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  var razorpayKeyId : ?Text = null;
-
-  // Stripe configuration (optional)
-  var stripeConfig : ?Stripe.StripeConfiguration = null;
-
-  // Dark mode preferences storage
-  let darkModePreferences = Map.empty<Principal, Bool>();
-
-  // Free trial tracking (first login timestamp in nanoseconds)
-  let loginRecords = Map.empty<Principal, Int>();
-
-  // In-memory maps for activity tracking
-  let lastSeenRecords = Map.empty<Principal, Int>();
-  let visitCounts = Map.empty<Principal, Int>();
-
-  // User profiles storage
   public type UserProfile = {
     name : Text;
   };
 
-  let userProfiles = Map.empty<Principal, UserProfile>();
-
-  // ActivityRecord type for external visibility
   public type ActivityRecord = {
     principalId : Text;
     lastSeen : Int;
     visitCount : Int;
   };
 
+  var razorpayKeyId : ?Text = null;
+  var stripeConfig : ?Stripe.StripeConfiguration = null;
+  let darkModePreferences = Map.empty<Principal, Bool>();
+  let loginRecords = Map.empty<Principal, Int>();
+  let lastSeenRecords = Map.empty<Principal, Int>();
+  let visitCounts = Map.empty<Principal, Int>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
+
   func adminOnly(caller : Principal) {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can perform this action");
     };
   };
-
-  // ---------------- User Profile Management ---------------
-
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
-    };
-    userProfiles.get(caller);
-  };
-
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
-    userProfiles.get(user);
-  };
-
-  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
-    userProfiles.add(caller, profile);
-  };
-
-  // ---------------- Stripe integration ---------------
 
   public query ({ caller }) func getRazorpayKeyId() : async ?Text {
     razorpayKeyId;
@@ -95,14 +58,15 @@ actor {
     stripeConfig := ?config;
   };
 
-  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
-    OutCall.transform(input);
-  };
-
-  func getStripeConfiguration() : Stripe.StripeConfiguration {
+  public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create checkout sessions");
+    };
     switch (stripeConfig) {
-      case (null) { Runtime.trap("Stripe not configured yet") };
-      case (?config) { config };
+      case (null) { Runtime.trap("Stripe configuration is missing") };
+      case (?config) {
+        await Stripe.createCheckoutSession(config, caller, items, successUrl, cancelUrl, transform);
+      };
     };
   };
 
@@ -111,23 +75,16 @@ actor {
       Runtime.trap("Unauthorized: Only users can check session status");
     };
     switch (stripeConfig) {
-      case (null) {
-        Runtime.trap("Not configured yet");
-      };
+      case (null) { Runtime.trap("Stripe configuration is missing") };
       case (?config) {
         await Stripe.getSessionStatus(config, sessionId, transform);
       };
     };
   };
 
-  public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create checkout sessions");
-    };
-    await Stripe.createCheckoutSession(getStripeConfiguration(), caller, items, successUrl, cancelUrl, transform);
+  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    OutCall.transform(input);
   };
-
-  // ---------- Dark Mode Preferences ----------
 
   public shared ({ caller }) func setDarkModePreference(isDark : Bool) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -143,9 +100,6 @@ actor {
     darkModePreferences.get(caller);
   };
 
-  // --------- Free Trial Tracking ------------
-
-  // Record the first login timestamp for the caller (in nanoseconds)
   public shared ({ caller }) func recordFirstLogin() : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can record logins");
@@ -166,9 +120,6 @@ actor {
     loginRecords.get(caller);
   };
 
-  // --------- Activity Tracking ------------
-
-  // Record visit timestamp and increment visit count
   public shared ({ caller }) func recordVisit() : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can record visits");
@@ -176,10 +127,8 @@ actor {
 
     let currentTime = Time.now();
 
-    // Update last seen timestamp
     lastSeenRecords.add(caller, currentTime);
 
-    // Increment visit count
     let currentCount = switch (visitCounts.get(caller)) {
       case (null) { 0 };
       case (?count) { count };
@@ -187,7 +136,6 @@ actor {
     visitCounts.add(caller, currentCount + 1);
   };
 
-  // Get all activity data (admin-only)
   public query ({ caller }) func getActivityData() : async [ActivityRecord] {
     adminOnly(caller);
 
@@ -207,5 +155,26 @@ actor {
     );
 
     activityIter.toArray();
+  };
+
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access profiles");
+    };
+    userProfiles.get(caller);
+  };
+
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
+    };
+    userProfiles.get(user);
+  };
+
+  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save profiles");
+    };
+    userProfiles.add(caller, profile);
   };
 };

@@ -1,25 +1,30 @@
 # Pulse Social
 
 ## Current State
-The app has a full social media platform with feed, explore, profiles, admin panel, and subscription system. There is no dedicated sharing page or shareable link card with the app logo.
+Full social media app with Internet Identity auth, posts/follows/likes/comments, Razorpay ₹1/week subscription, admin panel with Settings/Users/Posts/Activity tabs, dark mode sync, free trial tracking, visitor analytics, share page with QR code.
+
+The backend currently uses in-memory Maps (not stable), so all data including admin roles, Razorpay key, dark mode prefs, login records, and activity data is lost on every canister upgrade/redeploy. This means admin access is lost after every deployment, and users see "Access Denied, user not found" errors.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A `/share` route that renders a standalone sharing page
-- The sharing page displays the Pulse Social logo (silver shine icon + wordmark), a short tagline, the app URL as a copyable link, and a "Copy Link" button with success feedback
-- A "Share App" button in the TopNav dropdown menu (visible to all logged-in users) that navigates to `/share`
-- The share page also includes social share shortcuts (WhatsApp, Twitter/X, copy) with the app URL
+- Nothing new UI-wise
 
 ### Modify
-- TopNav dropdown: add a "Share App" menu item above the Sign out button
-- Router: add the `/share` route
+- **Backend**: Convert ALL in-memory Maps to stable storage so data persists across upgrades. Specifically:
+  - `accessControlState` (userRoles map + adminAssigned flag) must be stable
+  - `razorpayKeyId` must be stable var
+  - `stripeConfig` must be stable var  
+  - `darkModePreferences` map must be stable
+  - `loginRecords` map must be stable
+  - `lastSeenRecords` map must be stable
+  - `visitCounts` map must be stable
+  - `userProfiles` map must be stable
 
 ### Remove
 - Nothing
 
 ## Implementation Plan
-1. Create `src/frontend/src/pages/SharePage.tsx` — standalone page with logo, tagline, app URL display, copy-to-clipboard button, and social share buttons (WhatsApp, Twitter/X)
-2. Add `/share` route to the router in `App.tsx`
-3. Add "Share App" dropdown item to `TopNav.tsx` dropdown menu
-4. The share page should work for both logged-in and logged-out users (no subscription gate needed)
+1. Regenerate the Motoko backend with all state declared as `stable` so it survives upgrades.
+2. Keep all existing endpoints and logic exactly the same.
+3. No frontend changes needed.
